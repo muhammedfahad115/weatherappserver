@@ -1,6 +1,7 @@
 
 
 const User = require('../Model/userSchema');
+const weather = require('../Model/weatherSchema');
 const axios = require('axios');
 
 const {
@@ -53,13 +54,27 @@ const WeatherType = new GraphQLObjectType({
     }),
 });
 
+const saveWeatherType = new GraphQLObjectType({
+    name: 'saveWeather',
+    fields: () => ({
+        message: {type: GraphQLString},
+    })
+})
+
+const CityType = new GraphQLObjectType({
+    name: 'City',
+    fields: () => ({
+        city: { type: GraphQLString },
+    }),
+});
+
 const RootQuery = new GraphQLObjectType({
     name: 'RootQuery',
     fields: () => ({
       users: {
         type: new GraphQLList(UserType),
         resolve(parent, args) {
-          return User.find({}, { password: 0 });  // Exclude password field from the results
+          return User.find({}, { password: 0 });  
         },
       },
          weather: {
@@ -103,6 +118,14 @@ const RootQuery = new GraphQLObjectType({
                 }
             },
         },
+        City: {
+            type: new GraphQLList(CityType),
+            async resolve(parent, args) {
+                const findCities = await weather.find()
+                console.log(findCities)
+                return findCities
+            },
+        },
     }),
   });
 
@@ -111,7 +134,7 @@ const mutation = new GraphQLObjectType({
     name: 'Mutation',
     fields: {
       signup: {
-        type: UserType, // Assuming you have a UserType defined elsewhere
+        type: UserType, 
         args: {
           username: { type: GraphQLNonNull(GraphQLString) },
           email: { type: GraphQLNonNull(GraphQLString) },
@@ -149,6 +172,24 @@ const mutation = new GraphQLObjectType({
             .then((user)=>{
                 if(!user){
                     throw new Error('Invalid email or password')
+                }
+                const message = 'success'
+                return {message}
+            })
+        }
+      },
+      saveWeather: {
+        type: saveWeatherType,
+        args: {
+            city: {type: GraphQLNonNull(GraphQLString)}
+        },
+        resolve(parent,args, context){
+            const newCity = new weather({
+                city: args.city,
+            })
+            return newCity.save().then(()=>{
+                if(!newCity){
+                    throw new Error('City is already added')
                 }
                 const message = 'success'
                 return {message}
